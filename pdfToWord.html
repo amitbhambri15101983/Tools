@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Convert PDF to Word online for free with image optimization and compression options.">
+    <title>PDF to Word Converter</title>
+    
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            margin: 20px; 
+            background-color: #f0f8ff; 
+            color: #333; 
+        }
+        .container { 
+            max-width: 600px; 
+            margin: auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        input, select, button { 
+            margin-top: 10px; 
+            width: 100%; 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: 1px solid #ccc; 
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff; 
+            color: white; 
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .adsense { 
+            width: 100%; 
+            margin-top: 20px; 
+        }
+        h1 {
+            color: #007bff;
+        }
+        .status-container {
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #downloadButton {
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF to Word Converter</h1>
+    <div class="container">
+        <input type="file" id="pdfInput" accept="application/pdf">
+        <label for="compression">Compression Level:</label>
+        <select id="compression">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+        </select>
+        <button onclick="convertPDF()">Convert to Word</button>
+        <p id="status" class="status-container"></p>
+        <button id="downloadButton">Download Word File</button>
+    </div>
+
+    <!-- AdSense Placeholder -->
+    <div class="adsense">
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="YOUR-ADSENSE-ID"
+             data-ad-slot="YOUR-AD-UNIT-ID"
+             data-ad-format="auto"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.1.1/docx.min.js"></script>
+
+    <script>
+        async function convertPDF() {
+            const fileInput = document.getElementById('pdfInput').files[0];
+            const compressionLevel = document.getElementById('compression').value;
+            const downloadButton = document.getElementById('downloadButton');
+            const statusText = document.getElementById('status');
+
+            if (!fileInput) {
+                alert('Please select a PDF file');
+                return;
+            }
+
+            statusText.innerText = 'Extracting text from PDF...';
+            downloadButton.style.display = 'none';
+
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(fileInput);
+
+            reader.onload = async function () {
+                const pdfData = new Uint8Array(reader.result);
+                const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                let extractedText = '';
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    extractedText += textContent.items.map(item => item.str).join(' ') + '\n\n';
+                }
+
+                // Generate Word Document
+                const doc = new docx.Document({
+                    sections: [{
+                        properties: {},
+                        children: [
+                            new docx.Paragraph({
+                                children: [new docx.TextRun(extractedText)]
+                            })
+                        ],
+                    }],
+                });
+
+                // Save Word file
+                docx.Packer.toBlob(doc).then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+
+                    // Enable download button
+                    downloadButton.style.display = 'block';
+                    statusText.innerText = 'Conversion completed! Click download.';
+                    
+                    downloadButton.onclick = function () {
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "converted.docx";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                });
+            };
+        }
+    </script>
+</body>
+</html>
