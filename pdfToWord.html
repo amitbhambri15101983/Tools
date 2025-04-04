@@ -449,15 +449,13 @@
 <body>
     <header>
         <div class="container header-container">
-            <a href="index.html" class="logo">
+            <div class="logo">
                 <div class="logo-icon">
-                    <i class="fas fa-tools"></i>
+                    <i class="fas fa-file-word"></i>
                 </div>
-                <div class="logo-text">Tool<span>Kit</span>Pro</div>
-            </a>
-            <nav>
-                <a href="index.html" class="btn btn-outline">All Tools</a>
-            </nav>
+                <div class="logo-text">PDF to Word Converter</div>
+            </div>
+            <!-- Removed the "All Tools" button -->
         </div>
     </header>
 
@@ -785,7 +783,7 @@
             }
             
             // Conversion function
-            async function convertToWord() {
+             async function convertToWord() {
                 if (!currentFile) return;
                 
                 loadingSpinner.style.display = 'block';
@@ -796,44 +794,38 @@
                 const startTime = new Date().getTime();
                 
                 try {
-                    // In a real implementation, you would:
-                    // 1. Extract text and layout from PDF
-                    // 2. Process images if extractImages is checked
-                    // 3. Generate Word document
+                    const arrayBuffer = await currentFile.arrayBuffer();
+                    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                    const pages = pdfDoc.getPages();
                     
-                    // Simulate conversion delay
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Extract text content
+                    let wordContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+                          xmlns:w='urn:schemas-microsoft-com:office:word' 
+                          xmlns='http://www.w3.org/TR/REC-html40'>
+                      <head>
+                          <title>${currentFile.name.replace('.pdf', '')}</title>
+                          <meta charset="UTF-8">
+                      </head>
+                      <body>`;
                     
-                    // For demo purposes, we'll just create a simple Word-like document
-                    const docContent = `
-                        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-                              xmlns:w='urn:schemas-microsoft-com:office:word' 
-                              xmlns='http://www.w3.org/TR/REC-html40'>
-                        <head>
-                            <title>Converted from PDF</title>
-                            <meta charset="UTF-8">
-                        </head>
-                        <body>
-                            <h1>Converted PDF Document</h1>
-                            <p>This is a simulated Word document that would contain your converted PDF content.</p>
-                            <p>In a real implementation, this would include:</p>
-                            <ul>
-                                <li>All text from your PDF</li>
-                                <li>Preserved formatting and layout</li>
-                                <li>Extracted images (if enabled)</li>
-                            </ul>
-                            <p>Original filename: ${currentFile.name}</p>
-                        </body>
-                        </html>
-                    `;
+                    // Extract text from each page
+                    for (let i = 0; i < pages.length; i++) {
+                        const page = pages[i];
+                        const textContent = await page.getTextContent();
+                        const text = textContent.items.map(item => item.str).join(' ');
+                        wordContent += `<p>${text}</p>`;
+                    }
                     
-                    // Create a Blob with the Word-like content
-                    const blob = new Blob([docContent], { type: 'application/msword' });
+                    wordContent += `</body></html>`;
+                    
+                    // Create Blob with actual content
+                    const blob = new Blob([wordContent], { type: 'application/msword' });
                     convertedDoc = blob;
                     
                     // Show results
                     const endTime = new Date().getTime();
                     conversionTime.textContent = ((endTime - startTime) / 1000).toFixed(2) + ' seconds';
+                    pageCount.textContent = pages.length;
                     
                     resultsSection.style.display = 'block';
                 } catch (error) {
