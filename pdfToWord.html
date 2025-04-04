@@ -444,6 +444,14 @@
                 font-size: 1.3rem;
             }
         }
+
+        /* Add this to your existing CSS */
+        .preservation-options {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+        }
     </style>
 </head>
 <body>
@@ -792,39 +800,77 @@
             errorMessage.style.display = 'none';
             
             const startTime = new Date().getTime();
+            const shouldPreserveLayout = document.getElementById('preserveLayout').checked;
             
             try {
-                // First load with PDF.js to extract text
-                const pdfJsArrayBuffer = await currentFile.arrayBuffer();
-                const pdfJsDoc = await pdfjsLib.getDocument(pdfJsArrayBuffer).promise;
+                const arrayBuffer = await currentFile.arrayBuffer();
+                
+                // Load with PDF.js
+                const pdfJsDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
                 const numPages = pdfJsDoc.numPages;
                 
-                let fullText = '';
-                
-                // Extract text from each page using PDF.js
-                for (let i = 1; i <= numPages; i++) {
-                    const page = await pdfJsDoc.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const text = textContent.items.map(item => item.str).join(' ');
-                    fullText += `<p>${text}</p>`;
-                }
-                
-                // Now create Word document with the extracted text
-                const wordContent = `
+                let wordContent = `
                     <html xmlns:o='urn:schemas-microsoft-com:office:office' 
                           xmlns:w='urn:schemas-microsoft-com:office:word' 
                           xmlns='http://www.w3.org/TR/REC-html40'>
                     <head>
                         <title>${currentFile.name.replace('.pdf', '')}</title>
                         <meta charset="UTF-8">
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.5; }
+                            .page { page-break-after: always; margin-bottom: 20px; }
+                            .text-block { white-space: pre-wrap; margin-bottom: 10px; }
+                        </style>
                     </head>
                     <body>
-                        ${fullText}
-                    </body>
-                    </html>
                 `;
                 
-                // Create Blob with actual content
+                // Process each page
+                for (let i = 1; i <= numPages; i++) {
+                    const page = await pdfJsDoc.getPage(i);
+                    const textContent = await page.getTextContent();
+                    
+                    if (shouldPreserveLayout) {
+                        // Preserve layout by using text items' positions
+                        wordContent += `<div class="page">`;
+                        
+                        // Group text by vertical position to maintain lines
+                        const lines = {};
+                        textContent.items.forEach(item => {
+                            const y = Math.round(item.transform[5]);
+                            if (!lines[y]) lines[y] = [];
+                            lines[y].push(item);
+                        });
+                        
+                        // Sort lines from top to bottom
+                        const sortedLines = Object.keys(lines).sort((a, b) => b - a);
+                        
+                        sortedLines.forEach(y => {
+                            // Sort items in each line from left to right
+                            const lineItems = lines[y].sort((a, b) => a.transform[4] - b.transform[4]);
+                            let lineHtml = '<div class="text-block">';
+                            
+                            lineItems.forEach(item => {
+                                // Preserve spaces and formatting
+                                const text = item.str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                const style = `style="font-family:${item.fontName};font-size:${item.height}px;"`;
+                                lineHtml += `<span ${style}>${text}</span> `;
+                            });
+                            
+                            wordContent += lineHtml + '</div>';
+                        });
+                        
+                        wordContent += `</div>`;
+                    } else {
+                        // Simple text extraction without layout preservation
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        wordContent += `<p>${pageText}</p>`;
+                    }
+                }
+                
+                wordContent += `</body></html>`;
+                
+                // Create Blob
                 const blob = new Blob([wordContent], { type: 'application/msword' });
                 convertedDoc = blob;
                 
