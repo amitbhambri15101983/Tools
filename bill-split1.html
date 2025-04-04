@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Splitter</title>
+    <style>
+        /* Theme matching https://amitbhambri15101983.github.io/Tools/ */
+        :root {
+            --primary-color: #4285f4;
+            --secondary-color: #34a853;
+            --accent-color: #ea4335;
+            --background-color: #f8f9fa;
+            --card-color: #ffffff;
+            --text-color: #202124;
+            --border-color: #dadce0;
+        }
+        
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        h1, h2, h3 {
+            color: var(--primary-color);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        h2 {
+            font-size: 22px;
+            margin-top: 30px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .card {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3367d6;
+        }
+        
+        button.secondary {
+            background-color: var(--secondary-color);
+        }
+        
+        button.secondary:hover {
+            background-color: #2d924a;
+        }
+        
+        button.danger {
+            background-color: var(--accent-color);
+        }
+        
+        button.danger:hover {
+            background-color: #d33426;
+        }
+        
+        .back-button {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            background-color: var(--border-color);
+            color: var(--text-color);
+        }
+        
+        .back-button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .group-card {
+            position: relative;
+            padding-right: 100px;
+        }
+        
+        .group-actions {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+        }
+        
+        .bill-card {
+            border-left: 3px solid var(--primary-color);
+            padding-left: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .member-tag {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 16px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .settlement-card {
+            background-color: #e8f0fe;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .button-group button {
+            margin-top: 0;
+            flex: 1;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #5f6368;
+            padding: 20px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Back Button -->
+        <button id="backButton" class="back-button hidden">← Back</button>
+        
+        <!-- Group Selection Screen -->
+        <div id="groupScreen">
+            <h1>Bill Splitter</h1>
+            
+            <div class="card">
+                <h2>Your Groups</h2>
+                <div id="existingGroups">
+                    <!-- Groups will be loaded here -->
+                    <div class="empty-state">No groups found. Create your first group!</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Create New Group</h2>
+                <div class="form-group">
+                    <label for="groupName">Group Name</label>
+                    <input type="text" id="groupName" placeholder="Enter group name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="memberInput">Add Members</label>
+                    <div style="display: flex;">
+                        <input type="text" id="memberInput" placeholder="Enter member name" style="flex-grow: 1;">
+                        <button id="addMemberBtn" class="secondary" style="margin-left: 10px; margin-top: 0;">Add</button>
+                    </div>
+                    <div id="membersContainer" style="margin-top: 10px;">
+                        <!-- Members will be added here -->
+                    </div>
+                </div>
+                
+                <button id="createGroupBtn" class="secondary">Create Group</button>
+            </div>
+        </div>
+        
+        <!-- Bill Management Screen -->
+        <div id="billScreen" class="hidden">
+            <h1 id="currentGroupTitle">Group Name</h1>
+            
+            <div class="card">
+                <h2>Add New Bill</h2>
+                <div class="form-group">
+                    <label for="billAmount">Amount</label>
+                    <input type="number" id="billAmount" placeholder="0.00" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="paidBy">Paid By</label>
+                    <select id="paidBy">
+                        <option value="">Select who paid</option>
+                        <!-- Options will be added dynamically -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="billDescription">Description</label>
+                    <input type="text" id="billDescription" placeholder="What was this for?">
+                </div>
+                
+                <button id="addBillBtn">Add Bill</button>
+            </div>
+            
+            <div class="card">
+                <h2>Bills</h2>
+                <div id="billsContainer">
+                    <!-- Bills will be displayed here -->
+                    <div class="empty-state">No bills added yet</div>
+                </div>
+            </div>
+            
+            <div class="card settlement-card">
+                <h2>Settlement</h2>
+                <div id="settlementInfo">
+                    <!-- Settlement info will be displayed here -->
+                    <div class="empty-state">Add bills to see settlement information</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App State
+        let currentView = 'groups';
+        let currentGroupId = null;
+        let newGroupMembers = [];
+        
+        // DOM Elements
+        const backButton = document.getElementById('backButton');
+        const groupScreen = document.getElementById('groupScreen');
+        const billScreen = document.getElementById('billScreen');
+        const existingGroups = document.getElementById('existingGroups');
+        const membersContainer = document.getElementById('membersContainer');
+        const billsContainer = document.getElementById('billsContainer');
+        const currentGroupTitle = document.getElementById('currentGroupTitle');
+        const paidBySelect = document.getElementById('paidBy');
+        const settlementInfo = document.getElementById('settlementInfo');
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGroups();
+            setupEventListeners();
+        });
+        
+        // Event Listeners
+        function setupEventListeners() {
+            backButton.addEventListener('click', () => {
+                if (currentView === 'bills') {
+                    showGroupScreen();
+                }
+            });
+            
+            document.getElementById('addMemberBtn').addEventListener('click', addNewMember);
+            document.getElementById('createGroupBtn').addEventListener('click', createNewGroup);
+            document.getElementById('addBillBtn').addEventListener('click', addNewBill);
+            
+            // Handle Enter key in member input
+            document.getElementById('memberInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addNewMember();
+                }
+            });
+        }
+        
+        // Data Management
+        function loadGroups() {
+            const groups = getGroupsFromStorage();
+            existingGroups.innerHTML = '';
+            
+            if (groups.length === 0) {
+                existingGroups.innerHTML = '<div class="empty-state">No groups found. Create your first group!</div>';
+                return;
+            }
+            
+            groups.forEach(group => {
+                const groupCard = document.createElement('div');
+                groupCard.className = 'group-card card';
+                groupCard.innerHTML = `
+                    <h3>${group.name}</h3>
+                    <p>Members: ${group.members.join(', ')}</p>
+                    <p>Total bills: ${group.bills.length}</p>
+                    <div class="group-actions">
+                        <button data-group-id="${group.id}" class="open-group-btn">Open</button>
+                        <button data-group-id="${group.id}" class="danger delete-group-btn">Delete</button>
+                    </div>
+                `;
+                existingGroups.appendChild(groupCard);
+            });
+            
+            document.querySelectorAll('.open-group-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    openGroup(e.target.getAttribute('data-group-id'));
+                });
+            });
+            
+            document.querySelectorAll('.delete-group-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (confirm('Are you sure you want to delete this group and all its bills?')) {
+                        deleteGroup(e.target.getAttribute('data-group-id'));
+                    }
+                });
+            });
+        }
+        
+        function getGroupsFromStorage() {
+            const groupsJson = localStorage.getItem('billSplitGroups');
+            return groupsJson ? JSON.parse(groupsJson) : [];
+        }
+        
+        function saveGroupsToStorage(groups) {
+            localStorage.setItem('billSplitGroups', JSON.stringify(groups));
+        }
+        
+        function deleteGroup(groupId) {
+            const groups = getGroupsFromStorage().filter(g => g.id !== groupId);
+            saveGroupsToStorage(groups);
+            loadGroups();
+        }
+        
+        // Group Management
+        function addNewMember() {
+            const memberInput = document.getElementById('memberInput');
+            const memberName = memberInput.value.trim();
+            
+            if (memberName && !newGroupMembers.includes(memberName)) {
+                newGroupMembers.push(memberName);
+                memberInput.value = '';
+                renderMembersList();
+            }
+        }
+        
+        function renderMembersList() {
+            membersContainer.innerHTML = '';
+            newGroupMembers.forEach(member => {
+                const tag = document.createElement('span');
+                tag.className = 'member-tag';
+                tag.textContent = member;
+                membersContainer.appendChild(tag);
+            });
+        }
+        
+        function createNewGroup() {
+            const groupName = document.getElementById('groupName').value.trim();
+            
+            if (!groupName || newGroupMembers.length === 0) {
+                alert('Please enter a group name and add at least one member');
+                return;
+            }
+            
+            const groups = getGroupsFromStorage();
+            const newGroup = {
+                id: Date.now().toString(),
+                name: groupName,
+                members: [...newGroupMembers],
+                bills: []
+            };
+            
+            groups.push(newGroup);
+            saveGroupsToStorage(groups);
+            
+            // Reset form
+            document.getElementById('groupName').value = '';
+            document.getElementById('memberInput').value = '';
+            newGroupMembers = [];
+            membersContainer.innerHTML = '';
+            
+            loadGroups();
+        }
+        
+        function openGroup(groupId) {
+            const groups = getGroupsFromStorage();
+            const group = groups.find(g => g.id === groupId);
+            
+            if (!group) return;
+            
+            currentGroupId = groupId;
+            currentGroupTitle.textContent = group.name;
+            
+            // Update paid by dropdown
+            paidBySelect.innerHTML = '<option value="">Select who paid</option>';
+            group.members.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member;
+                option.textContent = member;
+                paidBySelect.appendChild(option);
+            });
+            
+            // Load bills
+            renderBills(group.bills);
+            calculateSettlements(group);
+            
+            showBillScreen();
+        }
+        
+        // Bill Management
+        function addNewBill() {
+            const amount = parseFloat(document.getElementById('billAmount').value);
+            const paidBy = document.getElementById('paidBy').value;
+            const description = document.getElementById('billDescription').value.trim();
+            
+            if (!amount || !paidBy || !description) {
+                alert('Please fill all bill details');
+                return;
+            }
+            
+            const groups = getGroupsFromStorage();
+            const groupIndex = groups.findIndex(g => g.id === currentGroupId);
+            
+            if (groupIndex === -1) return;
+            
+            const newBill = {
+                id: Date.now().toString(),
+                amount,
+                paidBy,
+                description,
+                date: new Date().toLocaleDateString()
+            };
+            
+            groups[groupIndex].bills.push(newBill);
+            saveGroupsToStorage(groups);
+            
+            // Reset form
+            document.getElementById('billAmount').value = '';
+            document.getElementById('paidBy').value = '';
+            document.getElementById('billDescription').value = '';
+            
+            // Update UI
+            renderBills(groups[groupIndex].bills);
+            calculateSettlements(groups[groupIndex]);
+        }
+        
+        function renderBills(bills) {
+            billsContainer.innerHTML = '';
+            
+            if (bills.length === 0) {
+                billsContainer.innerHTML = '<div class="empty-state">No bills added yet</div>';
+                return;
+            }
+            
+            bills.forEach(bill => {
+                const billCard = document.createElement('div');
+                billCard.className = 'bill-card';
+                billCard.innerHTML = `
+                    <p><strong>${bill.description}</strong> - $${bill.amount.toFixed(2)}</p>
+                    <p>Paid by: ${bill.paidBy} on ${bill.date}</p>
+                `;
+                billsContainer.appendChild(billCard);
+            });
+        }
+        
+        function calculateSettlements(group) {
+            const members = group.members;
+            const bills = group.bills;
+            
+            // Initialize balances
+            const balances = {};
+            members.forEach(member => {
+                balances[member] = 0;
+            });
+            
+            // Calculate balances
+            bills.forEach(bill => {
+                const share = bill.amount / members.length;
+                balances[bill.paidBy] += bill.amount;
+                
+                members.forEach(member => {
+                    balances[member] -= share;
+                });
+            });
+            
+            // Generate settlement text
+            let settlementText = '';
+            const transactions = [];
+            
+            // Create a copy of balances for processing
+            const balancesCopy = JSON.parse(JSON.stringify(balances));
+            
+            while (true) {
+                // Find the person with the highest debt and highest credit
+                let maxDebtor = null;
+                let maxCreditor = null;
+                let maxDebt = 0;
+                let maxCredit = 0;
+                
+                for (const [person, balance] of Object.entries(balancesCopy)) {
+                    if (balance < maxDebt) {
+                        maxDebt = balance;
+                        maxDebtor = person;
+                    }
+                    if (balance > maxCredit) {
+                        maxCredit = balance;
+                        maxCreditor = person;
+                    }
+                }
+                
+                // If no more debts or credits, we're done
+                if (maxDebt >= 0 || maxCredit <= 0) break;
+                
+                // Calculate the amount to transfer
+                const amount = Math.min(-maxDebt, maxCredit);
+                transactions.push({
+                    from: maxDebtor,
+                    to: maxCreditor,
+                    amount: amount.toFixed(2)
+                });
+                
+                // Update balances
+                balancesCopy[maxDebtor] += amount;
+                balancesCopy[maxCreditor] -= amount;
+            }
+            
+            if (transactions.length === 0) {
+                settlementText = '<p>Everything is balanced! No payments needed.</p>';
+            } else {
+                settlementText = '<ul>';
+                transactions.forEach(tx => {
+                    settlementText += `<li><strong>${tx.from}</strong> owes <strong>${tx.to}</strong> $${tx.amount}</li>`;
+                });
+                settlementText += '</ul>';
+            }
+            
+            settlementInfo.innerHTML = settlementText;
+        }
+        
+        // View Management
+        function showGroupScreen() {
+            currentView = 'groups';
+            groupScreen.classList.remove('hidden');
+            billScreen.classList.add('hidden');
+            backButton.classList.add('hidden');
+            loadGroups();
+        }
+        
+        function showBillScreen() {
+            currentView = 'bills';
+            groupScreen.classList.add('hidden');
+            billScreen.classList.remove('hidden');
+            backButton.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
