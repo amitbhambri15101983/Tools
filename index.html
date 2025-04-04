@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>ToolKitPro - Your Ultimate Online Tools Collection</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -17,6 +20,7 @@
             --warning: #ffcc00;
             --danger: #f44336;
             --gray: #6c757d;
+            --medium-gray: #dadce0;
             --border-radius: 8px;
             --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
@@ -180,37 +184,78 @@
             background-color: var(--secondary);
         }
 
-        /* Search Results */
+        /* Search Results - Improved Visibility */
         .search-results {
             display: none;
             background: white;
             border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             margin-top: 5px;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
             position: absolute;
             width: 100%;
-            z-index: 10;
+            z-index: 100;
+            border: 1px solid var(--medium-gray);
+            padding: 10px 0;
         }
 
         .search-results.active {
             display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .search-result-item {
             padding: 12px 20px;
             cursor: pointer;
             transition: var(--transition);
-            border-bottom: 1px solid var(--light);
+            display: block;
+            color: var(--dark);
+            text-decoration: none;
+            margin: 5px 10px;
+            border-radius: 4px;
         }
 
         .search-result-item:hover {
             background-color: var(--primary-light);
         }
 
-        .search-result-item:last-child {
-            border-bottom: none;
+        .search-result-item strong {
+            display: block;
+            color: var(--primary);
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        .search-result-item div {
+            font-size: 0.95rem;
+            margin-bottom: 3px;
+            color: var(--dark);
+        }
+
+        .search-result-item small {
+            font-size: 0.85rem;
+            color: var(--gray);
+            display: block;
+            margin-top: 3px;
+        }
+
+        .no-results {
+            padding: 15px;
+            text-align: center;
+            color: var(--dark);
+            font-size: 1rem;
+        }
+
+        .highlight {
+            background-color: #fffde7;
+            padding: 0 2px;
+            border-radius: 2px;
         }
 
         /* Categories */
@@ -725,7 +770,7 @@
                     </div>
                     <h3>Image Compressor</h3>
                     <p>Reduce image file size without losing quality</p>
-                    <a href="/Tools/img-compress.html" class="btn btn-outline">Use Tool</a>
+                    <a href="/Tools/img-compress.html?_=1" class="btn btn-outline">Use Tool</a>
                 </div>
                 <!-- Placeholder for future tools -->
                 <div class="tool-card">
@@ -986,7 +1031,7 @@
                 name: "Image Compressor",
                 description: "Reduce image file size without losing quality",
                 category: "Image Tools",
-                url: "/Tools/img-compress.html"
+                url: "/Tools/img-compress.html?_=1"
             },
             {
                 name: "Image Converter",
@@ -1015,33 +1060,43 @@
                 tool.category.toLowerCase().includes(query.toLowerCase())
             );
 
-            displayResults(results);
+            displayResults(results, query);
         }
 
-        function displayResults(results) {
+        function displayResults(results, query) {
             searchResults.innerHTML = '';
 
             if (results.length === 0) {
-                searchResults.innerHTML = '<div class="search-result-item">No tools found</div>';
+                searchResults.innerHTML = '<div class="no-results">No tools found matching "' + query + '"</div>';
                 searchResults.classList.add('active');
                 return;
             }
 
             results.forEach(tool => {
-                const resultItem = document.createElement('div');
+                const resultItem = document.createElement('a');
                 resultItem.className = 'search-result-item';
+                resultItem.href = `${tool.url}?_=${new Date().getTime()}`; // Cache-busting
+                
+                // Highlight matching text
+                const highlightedName = highlightMatches(tool.name, query);
+                const highlightedDesc = highlightMatches(tool.description, query);
+                const highlightedCategory = highlightMatches(tool.category, query);
+                
                 resultItem.innerHTML = `
-                    <strong>${tool.name}</strong>
-                    <div>${tool.description}</div>
-                    <small>${tool.category}</small>
+                    <strong>${highlightedName}</strong>
+                    <div>${highlightedDesc}</div>
+                    <small>${highlightedCategory}</small>
                 `;
-                resultItem.addEventListener('click', () => {
-                    window.location.href = tool.url;
-                });
                 searchResults.appendChild(resultItem);
             });
 
             searchResults.classList.add('active');
+        }
+
+        function highlightMatches(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(query, 'gi');
+            return text.replace(regex, match => `<span class="highlight">${match}</span>`);
         }
 
         // Event listeners for search
@@ -1061,7 +1116,7 @@
 
         // Close search results when clicking outside
         document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target) && !searchBtn.contains(e.target)) {
                 searchResults.classList.remove('active');
             }
         });
@@ -1071,8 +1126,27 @@
             if (e.key === 'Enter') {
                 const firstResult = searchResults.querySelector('.search-result-item');
                 if (firstResult) {
-                    firstResult.click();
+                    window.location.href = firstResult.href;
                 }
+            }
+        });
+
+        // Cache-busting technique for child pages
+        function navigateTo(url) {
+            // Add timestamp parameter to bypass cache
+            const timestamp = new Date().getTime();
+            const separator = url.includes('?') ? '&' : '?';
+            window.location.href = `${url}${separator}_=${timestamp}`;
+        }
+
+        // Update tool links in the page to include cache-busting
+        document.querySelectorAll('a[href*=".html"]').forEach(link => {
+            const originalHref = link.getAttribute('href');
+            if (!originalHref.includes('?_=')) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateTo(originalHref);
+                });
             }
         });
     </script>
