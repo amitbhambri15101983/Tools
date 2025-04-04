@@ -784,58 +784,64 @@
             
             // Conversion function
              async function convertToWord() {
-                if (!currentFile) return;
+            if (!currentFile) return;
+            
+            loadingSpinner.style.display = 'block';
+            resultsSection.style.display = 'none';
+            convertBtn.disabled = true;
+            errorMessage.style.display = 'none';
+            
+            const startTime = new Date().getTime();
+            
+            try {
+                // First load with PDF.js to extract text
+                const pdfJsArrayBuffer = await currentFile.arrayBuffer();
+                const pdfJsDoc = await pdfjsLib.getDocument(pdfJsArrayBuffer).promise;
+                const numPages = pdfJsDoc.numPages;
                 
-                loadingSpinner.style.display = 'block';
-                resultsSection.style.display = 'none';
-                convertBtn.disabled = true;
-                errorMessage.style.display = 'none';
+                let fullText = '';
                 
-                const startTime = new Date().getTime();
+                // Extract text from each page using PDF.js
+                for (let i = 1; i <= numPages; i++) {
+                    const page = await pdfJsDoc.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const text = textContent.items.map(item => item.str).join(' ');
+                    fullText += `<p>${text}</p>`;
+                }
                 
-                try {
-                    const arrayBuffer = await currentFile.arrayBuffer();
-                    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-                    const pages = pdfDoc.getPages();
-                    
-                    // Extract text content
-                    let wordContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+                // Now create Word document with the extracted text
+                const wordContent = `
+                    <html xmlns:o='urn:schemas-microsoft-com:office:office' 
                           xmlns:w='urn:schemas-microsoft-com:office:word' 
                           xmlns='http://www.w3.org/TR/REC-html40'>
-                      <head>
-                          <title>${currentFile.name.replace('.pdf', '')}</title>
-                          <meta charset="UTF-8">
-                      </head>
-                      <body>`;
-                    
-                    // Extract text from each page
-                    for (let i = 0; i < pages.length; i++) {
-                        const page = pages[i];
-                        const textContent = await page.getTextContent();
-                        const text = textContent.items.map(item => item.str).join(' ');
-                        wordContent += `<p>${text}</p>`;
-                    }
-                    
-                    wordContent += `</body></html>`;
-                    
-                    // Create Blob with actual content
-                    const blob = new Blob([wordContent], { type: 'application/msword' });
-                    convertedDoc = blob;
-                    
-                    // Show results
-                    const endTime = new Date().getTime();
-                    conversionTime.textContent = ((endTime - startTime) / 1000).toFixed(2) + ' seconds';
-                    pageCount.textContent = pages.length;
-                    
-                    resultsSection.style.display = 'block';
-                } catch (error) {
-                    showError('Conversion failed: ' + error.message);
-                    console.error('Conversion error:', error);
-                } finally {
-                    loadingSpinner.style.display = 'none';
-                    convertBtn.disabled = false;
-                }
+                    <head>
+                        <title>${currentFile.name.replace('.pdf', '')}</title>
+                        <meta charset="UTF-8">
+                    </head>
+                    <body>
+                        ${fullText}
+                    </body>
+                    </html>
+                `;
+                
+                // Create Blob with actual content
+                const blob = new Blob([wordContent], { type: 'application/msword' });
+                convertedDoc = blob;
+                
+                // Show results
+                const endTime = new Date().getTime();
+                conversionTime.textContent = ((endTime - startTime) / 1000).toFixed(2) + ' seconds';
+                pageCount.textContent = numPages;
+                
+                resultsSection.style.display = 'block';
+            } catch (error) {
+                showError('Conversion failed: ' + error.message);
+                console.error('Conversion error:', error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+                convertBtn.disabled = false;
             }
+        }
             
             function downloadWordDoc() {
                 if (!convertedDoc) return;
