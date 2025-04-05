@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Splitter Pro</title>
+    <style>
+        :root {
+            --primary: #4a6bdf;
+            --primary-light: #e8f0fe;
+            --secondary: #3a56c4;
+            --accent: #6cdf4a;
+            --dark: #2d3748;
+            --light: #f7fafc;
+            --success: #48bb78;
+            --warning: #ed8936;
+            --danger: #f56565;
+            --gray: #718096;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background: white;
+            box-shadow: var(--box-shadow);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .app-container {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .hidden { display: none; }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--success);
+        }
+
+        .btn-secondary:hover {
+            background: #2d924a;
+        }
+
+        .currency-selector {
+            margin: 0 0 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .bill-card {
+            border-left: 3px solid var(--primary);
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .settlement-card {
+            background: var(--primary-light);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-top: 30px;
+        }
+
+        .receipt-template {
+            position: absolute;
+            left: -9999px;
+            width: 600px;
+            background: white;
+            padding: 30px;
+        }
+
+        .receipt-header {
+            text-align: center;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .receipt-title {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .receipt-subtitle {
+            color: var(--gray);
+        }
+
+        .receipt-bill-item {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .receipt-settlement-item {
+            padding: 10px 0;
+            font-size: 16px;
+        }
+
+        .receipt-footer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid var(--primary);
+            text-align: center;
+            color: var(--gray);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 0 15px; }
+            .app-container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-calculator"></i>
+                BillSplitPro
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Group Screen -->
+        <div id="groupScreen">
+            <div class="app-container">
+                <h1>Your Groups</h1>
+                <div id="existingGroups" class="groups-list"></div>
+                
+                <h2>Create New Group</h2>
+                <input type="text" id="groupName" placeholder="Group name" class="full-input">
+                <div class="member-input">
+                    <input type="text" id="memberInput" placeholder="Add member">
+                    <button id="addMemberBtn" class="btn">Add</button>
+                </div>
+                <div id="membersContainer" class="members-tags"></div>
+                <button id="createGroupBtn" class="btn">Create Group</button>
+            </div>
+        </div>
+
+        <!-- Bill Screen -->
+        <div id="billScreen" class="hidden">
+            <div class="app-container">
+                <button id="backButton" class="btn">← Back</button>
+                
+                <div class="currency-selector">
+                    <select id="currency">
+                        <option value="INR" selected>₹ Indian Rupee</option>
+                        <option value="USD">$ US Dollar</option>
+                        <option value="EUR">€ Euro</option>
+                        <option value="GBP">£ British Pound</option>
+                    </select>
+                </div>
+
+                <h1 id="currentGroupTitle"></h1>
+
+                <div class="bill-form">
+                    <input type="number" id="billAmount" placeholder="Amount">
+                    <select id="paidBy"></select>
+                    <input type="text" id="billDesc" placeholder="Description">
+                    <button id="addBillBtn" class="btn">Add Bill</button>
+                </div>
+
+                <div id="billsContainer" class="bills-list"></div>
+                
+                <div class="settlement-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Settlement Summary</h2>
+                        <button id="downloadReceipt" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                    <div id="settlementInfo"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receipt Template -->
+        <div id="receiptTemplate" class="receipt-template">
+            <div class="receipt-header">
+                <h2>Bill Split Receipt</h2>
+                <h3 id="receiptGroupName"></h3>
+                <p id="receiptDate"></p>
+            </div>
+            <div id="receiptBills"></div>
+            <h3>Settlement Summary</h3>
+            <div id="receiptSettlement"></div>
+            <div class="receipt-footer">
+                Generated by BillSplitPro
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+        // App State
+        let currentGroupId = null;
+        let currency = 'INR';
+        const currencySymbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGroups();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('createGroupBtn').addEventListener('click', createGroup);
+            document.getElementById('addMemberBtn').addEventListener('click', addMember);
+            document.getElementById('addBillBtn').addEventListener('click', addBill);
+            document.getElementById('backButton').addEventListener('click', () => showScreen('groups'));
+            document.getElementById('currency').addEventListener('change', updateCurrency);
+            document.getElementById('downloadReceipt').addEventListener('click', downloadReceipt);
+        }
+
+        function updateCurrency() {
+            currency = document.getElementById('currency').value;
+            refreshBillDisplay();
+        }
+
+        async function downloadReceipt() {
+            const group = getCurrentGroup();
+            if (!group) return;
+
+            // Populate receipt template
+            document.getElementById('receiptGroupName').textContent = group.name;
+            document.getElementById('receiptDate').textContent = new Date().toLocaleDateString();
+            
+            // Add bills to receipt
+            const billsHtml = group.bills.map(bill => `
+                <div class="receipt-bill-item">
+                    <p><strong>${bill.description}</strong> - ${formatCurrency(bill.amount)}</p>
+                    <small>Paid by ${bill.paidBy} on ${bill.date}</small>
+                </div>
+            `).join('');
+            document.getElementById('receiptBills').innerHTML = billsHtml;
+
+            // Add settlement to receipt
+            const settlementHtml = calculateSettlements(group).map(tx => `
+                <div class="receipt-settlement-item">
+                    <p><strong>${tx.from}</strong> → <strong>${tx.to}</strong>: ${formatCurrency(tx.amount)}</p>
+                </div>
+            `).join('');
+            document.getElementById('receiptSettlement').innerHTML = settlementHtml;
+
+            // Generate image
+            const canvas = await html2canvas(document.getElementById('receiptTemplate'));
+            const link = document.createElement('a');
+            link.download = `${group.name}_receipt.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function formatCurrency(amount) {
+            return `${currencySymbols[currency]}${amount.toFixed(2)}`;
+        }
+
+        // Group Management Functions
+        function createGroup() {
+            const name = document.getElementById('groupName').value.trim();
+            const members = Array.from(document.querySelectorAll('.member-tag')).map(tag => tag.textContent);
+            
+            if (!name || members.length === 0) {
+                alert('Please enter group name and add members');
+                return;
+            }
+
+            const groups = JSON.parse(localStorage.getItem('groups') || '[]');
+            const newGroup = {
+                id: Date.now().toString(),
+                name,
+                members,
+                bills: [],
+                currency
+            };
+            
+            groups.push(newGroup);
+            localStorage.setItem('groups', JSON.stringify(groups));
+            
+            document.getElementById('groupName').value = '';
+            document.getElementById('membersContainer').innerHTML = '';
+            loadGroups();
+        }
+
+        function addMember() {
+            const name = document.getElementById('memberInput').value.trim();
+            if (!name) return;
+            
+            const tag = document.createElement('span');
+            tag.className = 'member-tag';
+            tag.textContent = name;
+            document.getElementById('membersContainer').appendChild(tag);
+            document.getElementById('memberInput').value = '';
+        }
+
+        function loadGroups() {
+            const groups = JSON.parse(localStorage.getItem('groups') || '[]');
+            const container = document.getElementById('existingGroups');
+            
+            container.innerHTML = groups.length ? '' : '<p>No groups found</p>';
+            
+            groups.forEach(group => {
+                const div = document.createElement('div');
+                div.className = 'group-item';
+                div.innerHTML = `
+                    <h3>${group.name}</h3>
+                    <p>Members: ${group.members.join(', ')}</p>
+                    <button class="btn open-group" data-id="${group.id}">Open</button>
+                    <button class="btn delete-group" data-id="${group.id}">Delete</button>
+                `;
+                container.appendChild(div);
+            });
+
+            // Add event listeners
+            document.querySelectorAll('.open-group').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    openGroup(e.target.dataset.id);
+                });
+            });
+
+            document.querySelectorAll('.delete-group').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (confirm('Delete this group?')) {
+                        deleteGroup(e.target.dataset.id);
+                    }
+                });
+            });
+        }
+
+        function openGroup(id) {
+            const groups = JSON.parse(localStorage.getItem('groups') || '[]');
+            const group = groups.find(g => g.id === id);
+            if (!group) return;
+            
+            currentGroupId = id;
+            document.getElementById('currentGroupTitle').textContent = group.name;
+            
+            // Set currency
+            currency = group.currency || 'INR';
+            document.getElementById('currency').value = currency;
+            
+            // Populate paid by dropdown
+            const paidBy = document.getElementById('paidBy');
+            paidBy.innerHTML = '<option value="">Select payer</option>';
+            group.members.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member;
+                option.textContent = member;
+                paidBy.appendChild(option);
+            });
+            
+            // Show bills
+            renderBills(group.bills);
+            calculateSettlements(group);
+            
+            showScreen('bills');
+        }
+
+        function deleteGroup(id) {
+            const groups = JSON.parse(localStorage.getItem('groups') || '[]')
+                .filter(g => g.id !== id);
+            localStorage.setItem('groups', JSON.stringify(groups));
+            loadGroups();
+        }
+
+        // Bill Management Functions
+        function addBill() {
+            const amount = parseFloat(document.getElementById('billAmount').value);
+            const paidBy = document.getElementById('paidBy').value;
+            const description = document.getElementById('billDesc').value.trim();
+            
+            if (!amount || !paidBy || !description) {
+                alert('Please fill all bill details');
+                return;
+            }
+            
+            const groups = JSON.parse(localStorage.getItem('groups') || '[]');
+            const groupIndex = groups.findIndex(g => g.id === currentGroupId);
+            if (groupIndex === -1) return;
+            
+            const newBill = {
+                id: Date.now().toString(),
+                amount,
+                paidBy,
+                description,
+                date: new Date().toLocaleDateString(),
+                currency
+            };
+            
+            groups[groupIndex].bills.push(newBill);
+            groups[groupIndex].currency = currency;
+            localStorage.setItem('groups', JSON.stringify(groups));
+            
+            // Clear form
+            document.getElementById('billAmount').value = '';
+            document.getElementById('paidBy').value = '';
+            document.getElementById('billDesc').value = '';
+            
+            // Refresh display
+            renderBills(groups[groupIndex].bills);
+            calculateSettlements(groups[groupIndex]);
+        }
+
+        function renderBills(bills) {
+            const container = document.getElementById('billsContainer');
+            container.innerHTML = bills.length ? '' : '<p>No bills added yet</p>';
+            
+            bills.forEach(bill => {
+                const div = document.createElement('div');
+                div.className = 'bill-card';
+                div.innerHTML = `
+                    <p><strong>${bill.description}</strong> - ${formatCurrency(bill.amount)}</p>
+                    <p>Paid by ${bill.paidBy} on ${bill.date}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function calculateSettlements(group) {
+            const members = group.members;
+            const bills = group.bills;
+            
+            // Initialize balances
+            const balances = {};
+            members.forEach(member => {
+                balances[member] = 0;
+            });
+            
+            // Calculate balances
+            bills.forEach(bill => {
+                const share = bill.amount / members.length;
+                balances[bill.paidBy] += bill.amount;
+                
+                members.forEach(member => {
+                    balances[member] -= share;
+                });
+            });
+            
+            // Calculate transactions
+            const transactions = [];
+            const balancesCopy = JSON.parse(JSON.stringify(balances));
+            
+            while (true) {
+                // Find max debtor and creditor
+                let maxDebtor = null, maxCreditor = null;
+                let maxDebt = 0, maxCredit = 0;
+                
+                for (const [person, balance] of Object.entries(balancesCopy)) {
+                    if (balance < maxDebt) {
+                        maxDebt = balance;
+                        maxDebtor = person;
+                    }
+                    if (balance > maxCredit) {
+                        maxCredit = balance;
+                        maxCreditor = person;
+                    }
+                }
+                
+                if (maxDebt >= 0 || maxCredit <= 0) break;
+                
+                const amount = Math.min(-maxDebt, maxCredit);
+                transactions.push({
+                    from: maxDebtor,
+                    to: maxCreditor,
+                    amount: parseFloat(amount.toFixed(2))
+                });
+                
+                balancesCopy[maxDebtor] += amount;
+                balancesCopy[maxCreditor] -= amount;
+            }
+            
+            // Display settlements
+            const container = document.getElementById('settlementInfo');
+            if (transactions.length === 0) {
+                container.innerHTML = '<p>All balances are settled</p>';
+            } else {
+                container.innerHTML = transactions.map(tx => `
+                    <p><strong>${tx.from}</strong> owes <strong>${tx.to}</strong> ${formatCurrency(tx.amount)}</p>
+                `).join('');
+            }
+            
+            return transactions;
+        }
+
+        function refreshBillDisplay() {
+            if (!currentGroupId) return;
+            const groups = JSON.parse(localStorage.getItem('groups') || []);
+            const group = groups.find(g => g.id === currentGroupId);
+            if (group) {
+                renderBills(group.bills);
+                calculateSettlements(group);
+            }
+        }
+
+        function getCurrentGroup() {
+            const groups = JSON.parse(localStorage.getItem('groups') || []);
+            return groups.find(g => g.id === currentGroupId);
+        }
+
+        function showScreen(screen) {
+            document.getElementById('groupScreen').style.display = screen === 'groups' ? 'block' : 'none';
+            document.getElementById('billScreen').style.display = screen === 'bills' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
